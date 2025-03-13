@@ -1,0 +1,67 @@
+[package]
+name = "vatger-airac-updater"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+aixm = { git = "https://github.com/blip-radar/aixm-rs" }
+vatsim-parser = { git = "https://github.com/blip-radar/vatsim-parser" }
+eframe = "0.31.0"
+egui = "0.31.0"
+rfd = "0.15.2"
+tokio = { version = "1.43.0", features = ["full"] }
+snafu = { version = "0.8.5", features = ["futures", "rust_1_81"] }
+itertools = "0.14.0"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+quick-xml = { version = "0.37.2", features = ["async-tokio", "serialize"] }
+chrono = "0.4.40"
+
+[features]
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+cargo = { level = "allow", priority = -1 }
+perf = { level = "warn", priority = -1 }
+
+cast_lossless = "allow"
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+match-same-arms = "allow"
+missing_errors_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+needless_pass_by_value = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+let-underscore-must-use = "warn"
+print_stderr = "warn"
+print_stdout = "warn"
+
+# prefer expect to allow
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+
+string_to_string = "warn"
+
+undocumented_unsafe_blocks = "warn"
+
+too_long_first_doc_paragraph = "warn"
+
+[lints.rust]
+# TODO
+missing_docs = "allow"
+unexpected_cfgs = { level = "warn" }
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "warn"
+unused_qualifications = "warn"
