@@ -8,19 +8,15 @@ use aixm::load_aixm_files;
 use chrono::{DateTime, SecondsFormat, Utc};
 use eframe::{CreationContext, Frame, NativeOptions};
 use egui::{Button, Context, Label, RichText, ScrollArea, Stroke, TextWrapMode, Widget as _};
-use itertools::Itertools as _;
 use load_es::load_euroscope_files;
 use rfd::FileDialog;
 use snafu::Snafu;
 use tokio::{
     runtime::{self, Runtime},
-    sync::mpsc::{
-        self,
-        error::{SendError, TryRecvError},
-    },
-    task::JoinSet,
+    sync::mpsc::{self, error::SendError},
+    try_join,
 };
-use tracing::{error, info, warn};
+use tracing::{Level, error, info};
 use tracing_subscriber::EnvFilter;
 use vatsim_parser::{ese::EseError, sct::SctError};
 
@@ -48,6 +44,11 @@ enum Error {
 
     #[snafu(display("Could not open AIXM ({}): {source}", filename.display()))]
     OpenAixm {
+        filename: PathBuf,
+        source: std::io::Error,
+    },
+    #[snafu(display("Could not read AIXM ({}): {source}", filename.display()))]
+    ReadAixm {
         filename: PathBuf,
         source: std::io::Error,
     },
@@ -92,14 +93,24 @@ enum Error {
 
 struct Message {
     content: String,
+    level: Level,
     time: DateTime<Utc>,
 }
 impl Message {
-    fn new(content: String) -> Self {
+    fn new(content: String, level: Level) -> Self {
         Self {
             content,
+            level,
             time: Utc::now(),
         }
+    }
+
+    fn info(content: String) -> Self {
+        Self::new(content, Level::INFO)
+    }
+
+    fn error(content: String) -> Self {
+        Self::new(content, Level::ERROR)
     }
 }
 
@@ -129,15 +140,9 @@ impl App {
     }
 
     fn handle_log_rx(&mut self) {
-        match self.rx.try_recv() {
-            Ok(msg) => {
-                info!("{}", msg.content);
-                self.log_buffer.push(msg);
-            }
-            Err(TryRecvError::Empty) => (),
-            Err(TryRecvError::Disconnected) => {
-                warn!("Channel is diconnected, this should not happen?");
-            }
+        while let Ok(msg) = self.rx.try_recv() {
+            info!("{}", msg.content);
+            self.log_buffer.push(msg);
         }
     }
 }
@@ -153,6 +158,7 @@ impl eframe::App for App {
 
             if ui.button("Choose AIRAC folder…").clicked() {
                 if let Some(path) = FileDialog::new().pick_folder() {
+                    self.log_buffer = vec![];
                     info!("AIRAC path chosen: {}", path.display());
                     self.picked_path = Some(path);
                 }
@@ -176,6 +182,7 @@ impl eframe::App for App {
             if ui.add_enabled(self.picked_path.is_some(), Button::new("Start Processing…")).clicked() {
                 if let Some(p) = &self.picked_path {
                     let path = PathBuf::from(p);
+                    self.log_buffer = vec![];
                     self.rt.spawn(spawn_jobs(path, self.tx.clone()));
                 } else {
                     error!("Path not found");
@@ -186,29 +193,42 @@ impl eframe::App for App {
 
             egui::Frame::new().stroke(Stroke::new(1., ui.style().visuals.text_color())).show(ui, |ui|
                 ScrollArea::both().stick_to_bottom(true).auto_shrink(false).show(ui, |ui| {
-                    Label::new(RichText::new(self.log_buffer.iter().map(|msg|
-                        format!(
-                            "[{}] {}",
-                            msg.time.to_rfc3339_opts(SecondsFormat::Millis, true),
-                            msg.content
+                    for msg in &self.log_buffer {
+                        Label::new(
+                            RichText::new(
+                                format!(
+                                    "[{}] {}",
+                                    msg.time.to_rfc3339_opts(SecondsFormat::Millis, true),
+                                    msg.content
+                                )
+                            )
+                                .size(12.)
+                                .line_height(Some(18.))
+                                .color(match msg.level {
+                                    Level::ERROR => ui.style().visuals.error_fg_color,
+                                    _ => ui.style().visuals.text_color(),
+
+                                })
                         )
-                    ).join("\n")).size(12.).line_height(Some(18.))).wrap_mode(TextWrapMode::Extend).ui(ui);
+                            .wrap_mode(TextWrapMode::Extend)
+                            .ui(ui);
+                    }
                 })
             );
         });
     }
 }
 
-async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) {
-    let mut join_handle = JoinSet::new();
-    if let Err(e) = load_euroscope_files(dir.as_ref(), &mut join_handle, tx.clone()) {
-        error!("{e}");
-    }
-    load_aixm_files(&mut join_handle, tx.clone());
-    join_handle
-        .join_all()
-        .await
+async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) -> AiracUpdaterResult {
+    let (es_files, aixm) = try_join!(
+        load_euroscope_files(dir.as_ref(), tx.clone()),
+        load_aixm_files(tx.clone())
+    )?;
+
+    let temp = es_files
         .into_iter()
-        .filter_map(Result::err)
-        .for_each(|e| error!("{e}"));
+        .map(|es_file| es_file.combine_with_aixm(&aixm))
+        .collect::<Vec<_>>();
+
+    Ok(())
 }
