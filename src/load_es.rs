@@ -11,8 +11,8 @@ use vatsim_parser::{
 };
 
 use crate::{
-    AiracUpdaterResult, Message, OpenEseSnafu, OpenSctSnafu, ParseEseSnafu, ParseSctSnafu,
-    ProcessingSnafu, ReadDirSnafu, ReadEseSnafu, ReadSctSnafu,
+    AiracUpdaterResult, Message, NoEuroscopePackFoundSnafu, OpenEseSnafu, OpenSctSnafu,
+    ParseEseSnafu, ParseSctSnafu, ProcessingSnafu, ReadDirSnafu, ReadEseSnafu, ReadSctSnafu,
 };
 
 pub(crate) enum EuroscopeFile {
@@ -27,10 +27,10 @@ pub(crate) enum EuroscopeFile {
     },
 }
 impl EuroscopeFile {
-    pub(crate) fn combine_with_aixm(self, aixm: &[Member]) -> Self {
+    pub(crate) fn combine_with_aixm(self, aixm: &[Member], tx: mpsc::Sender<Message>) -> Self {
         match self {
             EuroscopeFile::Sct { path, content } => {
-                let content = Sct::update_from_aixm(*content, aixm);
+                let content = Sct::update_from_aixm(*content, aixm, tx);
                 EuroscopeFile::Sct {
                     path,
                     content: Box::new(content),
@@ -45,10 +45,10 @@ impl EuroscopeFile {
 }
 
 trait SctAixmUpdateExt {
-    fn update_from_aixm(self, aixm: &[Member]) -> Self;
+    fn update_from_aixm(self, aixm: &[Member], tx: mpsc::Sender<Message>) -> Self;
 }
 
-fn update_airports(sct: &mut Sct, aixm_airport: &AixmAirportHeliport) {
+fn update_airports(sct: &mut Sct, aixm_airport: &AixmAirportHeliport, tx: mpsc::Sender<Message>) {
     let (lat, lng) = aixm_airport
         .aixm_time_slice
         .aixm_airport_heliport_time_slice
@@ -77,7 +77,11 @@ fn update_airports(sct: &mut Sct, aixm_airport: &AixmAirportHeliport) {
         .aixm_location_indicator_icao
         .text
     {
-        debug!("Adding new airport: {designator}");
+        if let Err(e) =
+            tx.blocking_send(Message::debug(format!("Adding new airport: {designator}")))
+        {
+            error!("{e}");
+        }
         sct.airports.push(Airport {
             designator: designator.clone(),
             coordinate,
@@ -86,7 +90,7 @@ fn update_airports(sct: &mut Sct, aixm_airport: &AixmAirportHeliport) {
     }
 }
 
-fn update_vors(sct: &mut Sct, aixm_vor: &AixmVor) {
+fn update_vors(sct: &mut Sct, aixm_vor: &AixmVor, tx: mpsc::Sender<Message>) {
     let (lat, lng) = (match &aixm_vor
         .aixm_time_slice
         .aixm_vortime_slice
@@ -115,7 +119,7 @@ fn update_vors(sct: &mut Sct, aixm_vor: &AixmVor) {
     }) {
         vor.coordinate = coordinate;
     } else {
-        debug!(
+        if let Err(e) = tx.blocking_send(Message::debug(format!(
             "Adding new VOR: {} {:.3}",
             aixm_vor.aixm_time_slice.aixm_vortime_slice.aixm_designator,
             aixm_vor
@@ -123,7 +127,10 @@ fn update_vors(sct: &mut Sct, aixm_vor: &AixmVor) {
                 .aixm_vortime_slice
                 .aixm_frequency
                 .value
-        );
+        ))) {
+            error!("{e}");
+        }
+
         sct.vors.push(VOR {
             designator: aixm_vor
                 .aixm_time_slice
@@ -143,7 +150,7 @@ fn update_vors(sct: &mut Sct, aixm_vor: &AixmVor) {
     }
 }
 
-fn update_ndbs(sct: &mut Sct, aixm_ndb: &AixmNdb) {
+fn update_ndbs(sct: &mut Sct, aixm_ndb: &AixmNdb, tx: mpsc::Sender<Message>) {
     let (lat, lng) = (match &aixm_ndb
         .aixm_time_slice
         .aixm_ndbtime_slice
@@ -172,7 +179,7 @@ fn update_ndbs(sct: &mut Sct, aixm_ndb: &AixmNdb) {
     }) {
         ndb.coordinate = coordinate;
     } else {
-        debug!(
+        if let Err(e) = tx.blocking_send(Message::debug(format!(
             "Adding new NDB: {} {:.3}",
             aixm_ndb.aixm_time_slice.aixm_ndbtime_slice.aixm_designator,
             aixm_ndb
@@ -180,7 +187,9 @@ fn update_ndbs(sct: &mut Sct, aixm_ndb: &AixmNdb) {
                 .aixm_ndbtime_slice
                 .aixm_frequency
                 .value
-        );
+        ))) {
+            error!("{e}");
+        }
         sct.vors.push(VOR {
             designator: aixm_ndb
                 .aixm_time_slice
@@ -200,7 +209,7 @@ fn update_ndbs(sct: &mut Sct, aixm_ndb: &AixmNdb) {
     }
 }
 
-fn update_fixes(sct: &mut Sct, aixm_fix: &AixmDesignatedPoint) {
+fn update_fixes(sct: &mut Sct, aixm_fix: &AixmDesignatedPoint, tx: mpsc::Sender<Message>) {
     let (lat, lng) = (match &aixm_fix
         .aixm_time_slice
         .aixm_designated_point_time_slice
@@ -239,13 +248,15 @@ fn update_fixes(sct: &mut Sct, aixm_fix: &AixmDesignatedPoint) {
             .next()
             .is_some_and(|c| !c.is_ascii_digit())
     {
-        debug!(
+        if let Err(e) = tx.blocking_send(Message::debug(format!(
             "Adding new Fix: {}",
             aixm_fix
                 .aixm_time_slice
                 .aixm_designated_point_time_slice
                 .aixm_designator,
-        );
+        ))) {
+            error!("{e}");
+        }
         sct.fixes.push(Fix {
             designator: aixm_fix
                 .aixm_time_slice
@@ -258,20 +269,20 @@ fn update_fixes(sct: &mut Sct, aixm_fix: &AixmDesignatedPoint) {
 }
 
 impl SctAixmUpdateExt for Sct {
-    fn update_from_aixm(mut self, aixm: &[Member]) -> Self {
+    fn update_from_aixm(mut self, aixm: &[Member], tx: mpsc::Sender<Message>) -> Self {
         for data in aixm {
             match data {
                 Member::AirportHeliport(aixm_airport_heliport) => {
-                    update_airports(&mut self, aixm_airport_heliport);
+                    update_airports(&mut self, aixm_airport_heliport, tx.clone());
                 }
                 Member::Vor(aixm_vor) => {
-                    update_vors(&mut self, aixm_vor);
+                    update_vors(&mut self, aixm_vor, tx.clone());
                 }
                 Member::Ndb(aixm_ndb) => {
-                    update_ndbs(&mut self, aixm_ndb);
+                    update_ndbs(&mut self, aixm_ndb, tx.clone());
                 }
                 Member::DesignatedPoint(aixm_fix) => {
-                    update_fixes(&mut self, aixm_fix);
+                    update_fixes(&mut self, aixm_fix, tx.clone());
                 }
                 _ => (),
             };
@@ -286,8 +297,9 @@ pub(crate) async fn load_euroscope_files(
     tx: mpsc::Sender<Message>,
 ) -> AiracUpdaterResult<Vec<EuroscopeFile>> {
     let mut join_handle = JoinSet::new();
-    let files = dir.read_dir().context(ReadDirSnafu)?;
-    files
+    let files = dir
+        .read_dir()
+        .context(ReadDirSnafu)?
         .filter_map(|f_result| {
             f_result.ok().and_then(|f| {
                 let path = f.path();
@@ -296,9 +308,18 @@ pub(crate) async fn load_euroscope_files(
                     .then_some(path)
             })
         })
-        .for_each(|path| {
-            join_handle.spawn(handle_file(path, tx.clone()));
-        });
+        .collect::<Vec<_>>();
+
+    if files.is_empty() {
+        return NoEuroscopePackFoundSnafu {
+            directory: dir.to_path_buf(),
+        }
+        .fail();
+    }
+
+    for path in files {
+        join_handle.spawn(handle_file(path, tx.clone()));
+    }
 
     Ok(join_handle
         .join_all()

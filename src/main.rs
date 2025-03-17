@@ -15,10 +15,10 @@ use snafu::Snafu;
 use tokio::{
     runtime::{self, Runtime},
     sync::mpsc::{self, error::SendError},
-    task::JoinError,
+    task::{JoinError, spawn_blocking},
     try_join,
 };
-use tracing::{Level, error, info};
+use tracing::{Level, debug, error, info, trace, warn};
 use tracing_subscriber::EnvFilter;
 use vatsim_parser::{ese::EseError, sct::SctError};
 
@@ -85,6 +85,9 @@ enum Error {
         source: std::io::Error,
     },
 
+    #[snafu(display("Could not find EuroScope controller pack: {}", directory.display()))]
+    NoEuroscopePackFound { directory: PathBuf },
+
     #[snafu(display("Could not open .ese ({}): {source}", filename.display()))]
     OpenEse {
         filename: PathBuf,
@@ -140,6 +143,10 @@ impl Message {
         }
     }
 
+    fn debug(content: String) -> Self {
+        Self::new(content, Level::DEBUG)
+    }
+
     fn info(content: String) -> Self {
         Self::new(content, Level::INFO)
     }
@@ -176,7 +183,13 @@ impl App {
 
     fn handle_log_rx(&mut self) {
         while let Ok(msg) = self.rx.try_recv() {
-            info!("{}", msg.content);
+            match msg.level {
+                Level::TRACE => trace!("{}", msg.content),
+                Level::DEBUG => debug!("{}", msg.content),
+                Level::INFO => info!("{}", msg.content),
+                Level::WARN => warn!("{}", msg.content),
+                Level::ERROR => error!("{}", msg.content),
+            };
             self.log_buffer.push(msg);
         }
     }
@@ -241,8 +254,9 @@ impl eframe::App for App {
                                 .line_height(Some(18.))
                                 .color(match msg.level {
                                     Level::ERROR => ui.style().visuals.error_fg_color,
-                                    _ => ui.style().visuals.text_color(),
-
+                                    Level::WARN => ui.style().visuals.warn_fg_color,
+                                    Level::INFO => ui.style().visuals.text_color(),
+                                    Level::TRACE | Level::DEBUG => ui.style().visuals.gray_out(ui.style().visuals.text_color()),
                                 })
                         )
                             .wrap_mode(TextWrapMode::Extend)
@@ -254,17 +268,30 @@ impl eframe::App for App {
     }
 }
 
-async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) -> AiracUpdaterResult {
-    let (es_files, aixm) = try_join!(
+async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) {
+    let (es_files, aixm) = match try_join!(
         load_euroscope_files(dir.as_ref(), tx.clone()),
         load_aixm_files(tx.clone())
-    )?;
+    ) {
+        Ok(ok) => ok,
+        Err(e) => {
+            if let Err(e) = tx.send(Message::error(e.to_string())).await {
+                error!("{e}");
+            }
+            return;
+        }
+    };
 
-    // TODO actually write back to .sct/.ese, create backup!
-    let _temp = es_files
-        .into_iter()
-        .map(|es_file| es_file.combine_with_aixm(&aixm))
-        .collect::<Vec<_>>();
-
-    Ok(())
+    match spawn_blocking(move || {
+        es_files
+            .into_iter()
+            .map(|es_file| es_file.combine_with_aixm(&aixm, tx.clone()))
+            .collect::<Vec<_>>()
+    })
+    .await
+    {
+        // TODO actually write back to .sct/.ese, create backup!
+        Ok(_files) => (),
+        Err(e) => error!("{e}"),
+    }
 }
