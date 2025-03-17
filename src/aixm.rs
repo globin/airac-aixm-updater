@@ -130,6 +130,7 @@ struct DfsAmdtMetadata {
 enum DfsAmdtDataset {
     #[serde(rename = "group")]
     Group {
+        #[expect(dead_code, reason = "to be moved to public API of aixm lib")]
         name: String,
         items: Vec<DfsAmdtDataset>,
     },

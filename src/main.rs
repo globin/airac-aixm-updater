@@ -44,12 +44,6 @@ enum Error {
     #[snafu(display("Could not read directory: source"))]
     ReadDir { source: std::io::Error },
 
-    #[snafu(display("Could not open AIXM ({}): {source}", filename.display()))]
-    OpenAixm {
-        filename: PathBuf,
-        source: std::io::Error,
-    },
-
     #[snafu(display("Could not deserialize DFS AIXM dataset list: {source}"))]
     DeserializeDfsDatasets { source: serde_json::Error },
 
@@ -78,7 +72,15 @@ enum Error {
     },
 
     #[snafu(display("Could not read AIXM ({}): {source}", filename.display()))]
+    #[expect(dead_code, reason = "to be used for local AIXM data")]
     ReadAixm {
+        filename: PathBuf,
+        source: std::io::Error,
+    },
+
+    #[snafu(display("Could not open AIXM ({}): {source}", filename.display()))]
+    #[expect(dead_code, reason = "to be used for local AIXM data")]
+    OpenAixm {
         filename: PathBuf,
         source: std::io::Error,
     },
@@ -258,7 +260,8 @@ async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) -> AiracUp
         load_aixm_files(tx.clone())
     )?;
 
-    let temp = es_files
+    // TODO actually write back to .sct/.ese, create backup!
+    let _temp = es_files
         .into_iter()
         .map(|es_file| es_file.combine_with_aixm(&aixm))
         .collect::<Vec<_>>();

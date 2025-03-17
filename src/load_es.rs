@@ -16,8 +16,15 @@ use crate::{
 };
 
 pub(crate) enum EuroscopeFile {
-    Sct { path: PathBuf, content: Box<Sct> },
-    Ese { path: PathBuf, content: Box<Ese> },
+    Sct {
+        path: PathBuf,
+        content: Box<Sct>,
+    },
+    #[expect(dead_code, reason = ".ese not handled yet")]
+    Ese {
+        path: PathBuf,
+        content: Box<Ese>,
+    },
 }
 impl EuroscopeFile {
     pub(crate) fn combine_with_aixm(self, aixm: &[Member]) -> Self {
