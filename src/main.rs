@@ -9,11 +9,13 @@ use chrono::{DateTime, SecondsFormat, Utc};
 use eframe::{CreationContext, Frame, NativeOptions};
 use egui::{Button, Context, Label, RichText, ScrollArea, Stroke, TextWrapMode, Widget as _};
 use load_es::load_euroscope_files;
+use quick_xml::DeError;
 use rfd::FileDialog;
 use snafu::Snafu;
 use tokio::{
     runtime::{self, Runtime},
     sync::mpsc::{self, error::SendError},
+    task::JoinError,
     try_join,
 };
 use tracing::{Level, error, info};
@@ -47,6 +49,34 @@ enum Error {
         filename: PathBuf,
         source: std::io::Error,
     },
+
+    #[snafu(display("Could not deserialize DFS AIXM dataset list: {source}"))]
+    DeserializeDfsDatasets { source: serde_json::Error },
+
+    #[snafu(display("Could not decode DFS AIXM dataset list: {source}"))]
+    DecodeDfsDatasets { source: reqwest::Error },
+
+    #[snafu(display("Could not fetch DFS AIXM dataset list: {source}"))]
+    FetchDfsDatasets { source: reqwest::Error },
+
+    #[snafu(display("Could not find AIXM dataset ({dataset})"))]
+    DatasetNotFound { dataset: String },
+
+    #[snafu(display("Could not deserialize AIXM dataset ({dataset}): {source}"))]
+    DeserializeDataset { dataset: String, source: DeError },
+
+    #[snafu(display("Could not decode AIXM dataset ({dataset}): {source}"))]
+    DecodeDataset {
+        dataset: String,
+        source: reqwest::Error,
+    },
+
+    #[snafu(display("Could not fetch AIXM dataset ({dataset}): {source}"))]
+    FetchDataset {
+        dataset: String,
+        source: reqwest::Error,
+    },
+
     #[snafu(display("Could not read AIXM ({}): {source}", filename.display()))]
     ReadAixm {
         filename: PathBuf,
@@ -89,6 +119,9 @@ enum Error {
 
     #[snafu(context(false))]
     Send { source: SendError<Message> },
+
+    #[snafu(context(false))]
+    Join { source: JoinError },
 }
 
 struct Message {

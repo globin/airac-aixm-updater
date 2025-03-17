@@ -18,6 +18,10 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 quick-xml = { version = "0.37.2", features = ["async-tokio", "serialize"] }
 chrono = "0.4.40"
 geo = "0.29.3"
+serde = { version = "1.0.219", features = ["derive"] }
+reqwest = { version = "0.12.14", features = ["rustls-tls"], default-features = false }
+serde_json = "1.0.140"
+futures = "0.3.31"
 
 [features]
 
