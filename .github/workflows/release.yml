@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     tags:
-      - [0-9]+.*
+      - "[0-9]+.*"
 
 env:
   CARGO_INCREMENTAL: 0
@@ -20,12 +20,14 @@ jobs:
   tests:
     uses: ./.github/workflows/ci.yml
   create-release:
-    if: github.repository_owner = "globin"
+    if: github.repository_owner == 'globin'
     needs: [tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@4
+      - uses: actions/checkout@v4
       - uses: taiki-e/create-gh-release-action@b7abb0cf5e72cb5500307b577f9ca3fd4c5be9d2 # v1.8.4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   upload-assets:
     needs: create-release
@@ -44,11 +46,10 @@ jobs:
             os: windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@4
+      - uses: actions/checkout@v4
       - uses: taiki-e/upload-rust-binary-action@e7953b6078194a4ae5f5619632e3715db6275561 # v1.24.0
         with:
           bin: airac-aixm-updater
           leading-dir: true
           target: ${{ matrix.target }}
-
-
+          token: ${{ secrets.GITHUB_TOKEN }}
