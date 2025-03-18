@@ -1,5 +1,7 @@
 #![allow(clippy::print_stderr, reason = "temp")]
 mod aixm;
+mod aixm_combine;
+mod aixm_dfs;
 mod load_es;
 
 use std::path::{Path, PathBuf};
