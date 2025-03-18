@@ -4414,7 +4414,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 [[package]]
 name = "vatsim-parser"
 version = "0.1.0"
-source = "git+https://github.com/blip-radar/vatsim-parser#5eb525def85f25e543675e4adfd8f8d3efe83902"
+source = "git+https://github.com/blip-radar/vatsim-parser#89278804512b3c005600dd6f8461723cdf495a2d"
 dependencies = [
  "bevy_derive",
  "bevy_reflect",
