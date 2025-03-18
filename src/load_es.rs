@@ -4,11 +4,11 @@ use tokio::{fs::File, io::AsyncReadExt as _, sync::mpsc, task::JoinSet};
 use tracing::{debug, error};
 use vatsim_parser::{ese::Ese, sct::Sct};
 
-use crate::{
-    AiracUpdaterResult, Message, NoEuroscopePackFoundSnafu, OpenEseSnafu, OpenSctSnafu,
-    ParseEseSnafu, ParseSctSnafu, ProcessingSnafu, ReadDirSnafu, ReadEseSnafu, ReadSctSnafu,
-    aixm_combine::EuroscopeFile,
+use crate::error::{
+    AiracUpdaterResult, NoEuroscopePackFoundSnafu, OpenEseSnafu, OpenSctSnafu, ParseEseSnafu,
+    ParseSctSnafu, ProcessingSnafu, ReadDirSnafu, ReadEseSnafu, ReadSctSnafu,
 };
+use crate::{Message, aixm_combine::EuroscopeFile};
 
 pub(crate) async fn load_euroscope_files(
     dir: &Path,

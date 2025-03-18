@@ -8,9 +8,12 @@ use tokio::{
 };
 use tracing::error;
 
-use crate::{
+use crate::error::{
     AiracUpdaterResult, DatasetNotFoundSnafu, DecodeDatasetSnafu, DeserializeDatasetSnafu,
-    FetchDatasetSnafu, Message,
+    FetchDatasetSnafu,
+};
+use crate::{
+    Message,
     aixm_dfs::{fetch_dfs_datasets, get_dataset_url},
 };
 

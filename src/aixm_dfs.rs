@@ -2,7 +2,7 @@ use serde::Deserialize;
 use snafu::ResultExt as _;
 use tracing::trace;
 
-use crate::{
+use crate::error::{
     AiracUpdaterResult, DecodeDfsDatasetsSnafu, DeserializeDfsDatasetsSnafu, FetchDfsDatasetsSnafu,
 };
 
