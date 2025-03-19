@@ -1,8 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use aixm::{AixmAirportHeliport, AixmDesignatedPoint, AixmNdb, AixmVor, LocationType, Member};
+use chrono::Utc;
 use geo::coord;
-use tokio::sync::mpsc;
+use snafu::ResultExt as _;
+use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::mpsc};
 use tracing::error;
 use vatsim_parser::{
     adaptation::locations::{Fix, NDB, VOR},
@@ -10,7 +12,10 @@ use vatsim_parser::{
     sct::{Airport, Sct},
 };
 
-use crate::Message;
+use crate::{
+    Message,
+    error::{AiracUpdaterResult, CreateNewSnafu, RenameSnafu, WriteNewSnafu},
+};
 
 pub(crate) enum EuroscopeFile {
     Sct {
@@ -37,6 +42,43 @@ impl EuroscopeFile {
                 path: _,
                 content: _,
             } => self,
+        }
+    }
+
+    pub(crate) async fn write_file(self) -> AiracUpdaterResult {
+        if let Self::Sct { content: sct, .. } = &self {
+            if let Some(file_name) = self.path().file_name() {
+                let mut bkp_file_name = file_name.to_os_string();
+                bkp_file_name.push(format!(".aau_bkp{}", Utc::now().format("%Y%m%d")));
+                let bkp_file_path = self.path().with_file_name(bkp_file_name);
+                tokio::fs::rename(self.path(), &bkp_file_path)
+                    .await
+                    .context(RenameSnafu {
+                        from: self.path().to_path_buf(),
+                        to: bkp_file_path,
+                    })?;
+                OpenOptions::new()
+                    .create_new(true)
+                    .write(true)
+                    .open(self.path())
+                    .await
+                    .context(CreateNewSnafu {
+                        path: self.path().to_path_buf(),
+                    })?
+                    .write_all(sct.to_string().as_bytes())
+                    .await
+                    .context(WriteNewSnafu {
+                        path: self.path().to_path_buf(),
+                    })?;
+            }
+        }
+        Ok(())
+    }
+
+    fn path(&self) -> &Path {
+        match self {
+            EuroscopeFile::Sct { path, content: _ } => path,
+            EuroscopeFile::Ese { path, content: _ } => path,
         }
     }
 }

@@ -14,8 +14,25 @@ pub(crate) enum Error {
     #[snafu(display("Could not process {}", filename.display()))]
     Processing { filename: PathBuf },
 
-    #[snafu(display("Could not read directory: source"))]
+    #[snafu(display("Could not read directory: {source}"))]
     ReadDir { source: std::io::Error },
+
+    #[snafu(display("Could not rename file ({} -> {}): {source}", from.display(), to.display()))]
+    Rename {
+        source: std::io::Error,
+        from: PathBuf,
+        to: PathBuf,
+    },
+    #[snafu(display("Could not create file ({}): {source}", path.display()))]
+    CreateNew {
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[snafu(display("Could not write to new file ({}): {source}", path.display()))]
+    WriteNew {
+        source: std::io::Error,
+        path: PathBuf,
+    },
 
     #[snafu(display("Could not deserialize DFS AIXM dataset list: {source}"))]
     DeserializeDfsDatasets { source: serde_json::Error },

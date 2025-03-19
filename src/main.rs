@@ -188,16 +188,24 @@ async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) {
         }
     };
 
+    let blocking_tx = tx.clone();
     match spawn_blocking(move || {
         es_files
             .into_iter()
-            .map(|es_file| es_file.combine_with_aixm(&aixm, tx.clone()))
+            .map(|es_file| es_file.combine_with_aixm(&aixm, blocking_tx.clone()))
             .collect::<Vec<_>>()
     })
     .await
     {
-        // TODO actually write back to .sct/.ese, create backup!
-        Ok(_files) => (),
+        Ok(files) => {
+            for file in files {
+                if let Err(e) = file.write_file().await {
+                    if let Err(e) = tx.send(Message::error(e.to_string())).await {
+                        error!("{e}");
+                    }
+                }
+            }
+        }
         Err(e) => error!("{e}"),
     }
 }
