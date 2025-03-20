@@ -49,7 +49,7 @@ impl EuroscopeFile {
         if let Self::Sct { content: sct, .. } = &self {
             if let Some(file_name) = self.path().file_name() {
                 let mut bkp_file_name = file_name.to_os_string();
-                bkp_file_name.push(format!(".aau_bkp{}", Utc::now().format("%Y%m%d")));
+                bkp_file_name.push(format!(".aau_bkp{}", Utc::now().format("%Y%m%d_%H%M%S")));
                 let bkp_file_path = self.path().with_file_name(bkp_file_name);
                 tokio::fs::rename(self.path(), &bkp_file_path)
                     .await
