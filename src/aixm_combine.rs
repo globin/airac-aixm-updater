@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use aixm::{AixmAirportHeliport, AixmDesignatedPoint, AixmNdb, AixmVor, LocationType, Member};
 use chrono::Utc;
-use geo::coord;
+use geo::{Distance as _, Geodesic, coord};
 use snafu::ResultExt as _;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::mpsc};
 use tracing::error;
@@ -45,18 +45,32 @@ impl EuroscopeFile {
         }
     }
 
-    pub(crate) async fn write_file(self) -> AiracUpdaterResult {
+    pub(crate) async fn write_file(self, tx: mpsc::Sender<Message>) -> AiracUpdaterResult {
         if let Self::Sct { content: sct, .. } = &self {
             if let Some(file_name) = self.path().file_name() {
                 let mut bkp_file_name = file_name.to_os_string();
                 bkp_file_name.push(format!(".aau_bkp{}", Utc::now().format("%Y%m%d_%H%M%S")));
                 let bkp_file_path = self.path().with_file_name(bkp_file_name);
+                tx.send(Message::info(format!(
+                    "Moving {} to {}",
+                    self.path().display(),
+                    bkp_file_path.display()
+                )))
+                .await?;
+
                 tokio::fs::rename(self.path(), &bkp_file_path)
                     .await
                     .context(RenameSnafu {
                         from: self.path().to_path_buf(),
                         to: bkp_file_path,
                     })?;
+
+                tx.send(Message::info(format!(
+                    "Writing new {}",
+                    self.path().display(),
+                )))
+                .await?;
+
                 OpenOptions::new()
                     .create_new(true)
                     .write(true)
@@ -70,6 +84,12 @@ impl EuroscopeFile {
                     .context(WriteNewSnafu {
                         path: self.path().to_path_buf(),
                     })?;
+
+                tx.send(Message::info(format!(
+                    "Finished writing {}",
+                    self.path().display(),
+                )))
+                .await?;
             }
         }
         Ok(())

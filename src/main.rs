@@ -199,7 +199,7 @@ async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) {
     {
         Ok(files) => {
             for file in files {
-                if let Err(e) = file.write_file().await {
+                if let Err(e) = file.write_file(tx.clone()).await {
                     if let Err(e) = tx.send(Message::error(e.to_string())).await {
                         error!("{e}");
                     }
