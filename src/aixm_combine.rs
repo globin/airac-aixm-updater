@@ -290,7 +290,7 @@ fn update_fixes(sct: &mut Sct, aixm_fix: &AixmDesignatedPoint, tx: mpsc::Sender<
             .aixm_designated_point_time_slice
             .aixm_designator
             == fix.designator
-        // FIXME check "near" to existing and add only if not exists, no modifying
+            && Geodesic::distance(coordinate.into(), fix.coordinate.into()) < 1000.0
     }) {
         fix.coordinate = coordinate;
     } else if aixm_fix
