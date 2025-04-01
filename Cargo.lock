@@ -159,7 +159,7 @@ dependencies = [
  "futures",
  "geo",
  "itertools 0.14.0",
- "quick-xml 0.37.2",
+ "quick-xml 0.37.4",
  "reqwest",
  "rfd",
  "serde",
@@ -176,7 +176,7 @@ name = "aixm"
 version = "0.1.0"
 source = "git+https://github.com/blip-radar/aixm-rs#f2096702b1b46be2f1aac6a1314ab03df2d2d008"
 dependencies = [
- "quick-xml 0.37.2",
+ "quick-xml 0.37.4",
  "serde",
 ]
 
@@ -3220,9 +3220,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.37.2"
+version = "0.37.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "165859e9e55f79d67b96c5d96f4e88b6f2695a1972849c15a6a3f5c59fc2c003"
+checksum = "a4ce8c88de324ff838700f36fb6ab86c96df0e3c4ab6ef3a9b2044465cce1369"
 dependencies = [
  "memchr",
  "serde",
@@ -4659,7 +4659,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "896fdafd5d28145fce7958917d69f2fd44469b1d4e861cb5961bcbeebc6d1484"
 dependencies = [
  "proc-macro2",
- "quick-xml 0.37.2",
+ "quick-xml 0.37.4",
  "quote",
 ]
 
