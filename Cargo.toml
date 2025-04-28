@@ -15,7 +15,7 @@ snafu = { version = "0.8.5", features = ["futures", "rust_1_81"] }
 itertools = "0.14.0"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-quick-xml = { version = "0.37.2", features = ["async-tokio", "serialize"] }
+quick-xml = { version = "0.37.5", features = ["async-tokio", "serialize"] }
 chrono = "0.4.40"
 geo = "0.29.3"
 serde = { version = "1.0.219", features = ["derive"] }
