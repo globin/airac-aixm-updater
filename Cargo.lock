@@ -4309,7 +4309,7 @@ dependencies = [
 [[package]]
 name = "vatsim-parser"
 version = "0.1.0"
-source = "git+https://github.com/blip-radar/vatsim-parser#dda475b24c07523b43e37028639919304bb79d50"
+source = "git+https://github.com/blip-radar/vatsim-parser#8f47cd466cd38fc4ce3245c16fa09530011384e4"
 dependencies = [
  "bevy_derive",
  "bevy_reflect",
