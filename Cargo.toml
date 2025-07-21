@@ -7,23 +7,23 @@ license = "MIT"
 [dependencies]
 aixm = { git = "https://github.com/blip-radar/aixm-rs" }
 vatsim-parser = { git = "https://github.com/blip-radar/vatsim-parser" }
-eframe = "0.31.0"
-egui = "0.31.0"
-rfd = "0.15.2"
-tokio = { version = "1.43.0", features = ["full"] }
-snafu = { version = "0.8.5", features = ["futures", "rust_1_81"] }
-itertools = "0.14.0"
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-quick-xml = { version = "0.37.2", features = ["async-tokio", "serialize"] }
-chrono = "0.4.40"
-geo = "0.29.3"
-serde = { version = "1.0.219", features = ["derive"] }
-reqwest = { version = "0.12.14", features = [
+eframe = "0.32"
+egui = "0.32"
+rfd = "0.15"
+tokio = { version = "1", features = ["full"] }
+snafu = { version = "0.8", features = ["futures", "rust_1_81"] }
+itertools = "0.14"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+quick-xml = { version = "0.38", features = ["async-tokio", "serialize"] }
+chrono = "0.4"
+geo = "0.30"
+serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.12", features = [
         "rustls-tls",
 ], default-features = false }
-serde_json = "1.0.140"
-futures = "0.3.31"
+serde_json = "1"
+futures = "0.3"
 
 [features]
 
