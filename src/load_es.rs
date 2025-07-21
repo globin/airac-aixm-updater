@@ -1,43 +1,35 @@
-use snafu::{OptionExt as _, ResultExt as _};
+use snafu::ResultExt as _;
 use std::path::Path;
 use tokio::{fs::File, io::AsyncReadExt as _, sync::mpsc, task::JoinSet};
 use tracing::{debug, error};
+use vatsim_parser::isec::parse_isec_txt;
+use vatsim_parser::prf::Prf;
 use vatsim_parser::{ese::Ese, sct::Sct};
 
 use crate::error::{
-    AiracUpdaterResult, NoEuroscopePackFoundSnafu, OpenEseSnafu, OpenSctSnafu, ParseEseSnafu,
-    ParseSctSnafu, ProcessingSnafu, ReadDirSnafu, ReadEseSnafu, ReadSctSnafu,
+    AiracUpdaterResult, OpenEseSnafu, OpenIsecSnafu, OpenPrfSnafu, OpenSctSnafu, ParseEseSnafu,
+    ParseIsecSnafu, ParsePrfSnafu, ParseSctSnafu, ReadEseSnafu, ReadIsecSnafu, ReadPrfSnafu,
+    ReadSctSnafu,
 };
 use crate::{Message, aixm_combine::EuroscopeFile};
 
 pub(crate) async fn load_euroscope_files(
-    dir: &Path,
+    prf_path: &Path,
     tx: mpsc::Sender<Message>,
 ) -> AiracUpdaterResult<Vec<EuroscopeFile>> {
+    let mut prf_contents = vec![];
+    File::open(prf_path)
+        .await
+        .context(OpenPrfSnafu { filename: prf_path })?
+        .read_to_end(&mut prf_contents)
+        .await
+        .context(ReadPrfSnafu { filename: prf_path })?;
+    let prf = Prf::parse(prf_path, &prf_contents).context(ParsePrfSnafu { filename: prf_path })?;
     let mut join_handle = JoinSet::new();
-    let files = dir
-        .read_dir()
-        .context(ReadDirSnafu)?
-        .filter_map(|f_result| {
-            f_result.ok().and_then(|f| {
-                let path = f.path();
-                path.extension()
-                    .is_some_and(|extension| extension == "sct" || extension == "ese")
-                    .then_some(path)
-            })
-        })
-        .collect::<Vec<_>>();
 
-    if files.is_empty() {
-        return NoEuroscopePackFoundSnafu {
-            directory: dir.to_path_buf(),
-        }
-        .fail();
-    }
-
-    for path in files {
-        join_handle.spawn(handle_file(path, tx.clone()));
-    }
+    join_handle.spawn(handle_sct(prf.sct_path(), tx.clone()));
+    join_handle.spawn(handle_ese(prf.ese_path(), tx.clone()));
+    join_handle.spawn(handle_isec(prf.isec_path(), tx.clone()));
 
     Ok(join_handle
         .join_all()
@@ -55,28 +47,11 @@ pub(crate) async fn load_euroscope_files(
         .collect())
 }
 
-async fn handle_file(
-    file: impl AsRef<Path>,
-    tx: mpsc::Sender<Message>,
-) -> AiracUpdaterResult<EuroscopeFile> {
-    let file = file.as_ref();
-    let ext = file
-        .extension()
-        .context(ProcessingSnafu { filename: file })?;
-    match ext {
-        _ if ext == "ese" => handle_ese(file, tx.clone()).await,
-        _ if ext == "sct" => handle_sct(file, tx.clone()).await,
-        _ => unreachable!(
-            "Should never try to process file extension {}",
-            ext.to_string_lossy()
-        ),
-    }
-}
-
 async fn handle_ese(
-    filename: &Path,
+    filename: impl AsRef<Path>,
     tx: mpsc::Sender<Message>,
 ) -> AiracUpdaterResult<EuroscopeFile> {
+    let filename = filename.as_ref();
     let mut buf = vec![];
     debug!("Opening .ese: {}", filename.display());
     let mut f = File::open(filename)
@@ -110,9 +85,10 @@ async fn handle_ese(
 }
 
 async fn handle_sct(
-    filename: &Path,
+    filename: impl AsRef<Path>,
     tx: mpsc::Sender<Message>,
 ) -> AiracUpdaterResult<EuroscopeFile> {
+    let filename = filename.as_ref();
     let mut buf = vec![];
 
     debug!("Opening .sct: {}", filename.display());
@@ -145,5 +121,44 @@ async fn handle_sct(
     Ok(EuroscopeFile::Sct {
         path: filename.to_path_buf(),
         content: Box::new(sct),
+    })
+}
+
+async fn handle_isec(
+    filename: impl AsRef<Path>,
+    tx: mpsc::Sender<Message>,
+) -> AiracUpdaterResult<EuroscopeFile> {
+    let filename = filename.as_ref();
+    let mut buf = vec![];
+
+    debug!("Opening isec.txt: {}", filename.display());
+    let mut f = File::open(filename)
+        .await
+        .context(OpenIsecSnafu { filename })?;
+
+    tx.send(Message::info(format!(
+        "Reading isec.txt: {}",
+        filename.display()
+    )))
+    .await?;
+    f.read_to_end(&mut buf)
+        .await
+        .context(ReadIsecSnafu { filename })?;
+
+    tx.send(Message::info(format!(
+        "Parsing isec.txt: {}",
+        filename.display()
+    )))
+    .await?;
+    let isec = parse_isec_txt(&buf).context(ParseIsecSnafu { filename })?;
+    tx.send(Message::info(format!(
+        "Parsing isec.txt complete: {}",
+        filename.display(),
+    )))
+    .await?;
+
+    Ok(EuroscopeFile::Isec {
+        path: filename.to_path_buf(),
+        content: Box::new(isec),
     })
 }

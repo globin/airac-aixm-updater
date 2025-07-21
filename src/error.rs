@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use snafu::Snafu;
 use tokio::{sync::mpsc::error::SendError, task::JoinError};
-use vatsim_parser::{ese::EseError, sct::SctError};
+use vatsim_parser::{ese::EseError, isec::IsecError, prf::PrfError, sct::SctError};
 
 use crate::Message;
 
@@ -11,12 +11,6 @@ pub(crate) type AiracUpdaterResult<T = ()> = Result<T, Error>;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub(crate) enum Error {
-    #[snafu(display("Could not process {}", filename.display()))]
-    Processing { filename: PathBuf },
-
-    #[snafu(display("Could not read directory: {source}"))]
-    ReadDir { source: std::io::Error },
-
     #[snafu(display("Could not rename file ({} -> {}): {source}", from.display(), to.display()))]
     Rename {
         source: std::io::Error,
@@ -78,8 +72,39 @@ pub(crate) enum Error {
         source: std::io::Error,
     },
 
-    #[snafu(display("Could not find EuroScope controller pack: {}", directory.display()))]
-    NoEuroscopePackFound { directory: PathBuf },
+    #[snafu(display("Could not open .prf ({}): {source}", filename.display()))]
+    OpenPrf {
+        filename: PathBuf,
+        source: std::io::Error,
+    },
+    #[snafu(display("Could not read .prf ({}): {source}", filename.display()))]
+    ReadPrf {
+        filename: PathBuf,
+        source: std::io::Error,
+    },
+    #[snafu(display("Could not parse .prf ({}): {source}", filename.display()))]
+    ParsePrf {
+        filename: PathBuf,
+        #[snafu(source(from(PrfError, Box::new)))]
+        source: Box<PrfError>,
+    },
+
+    #[snafu(display("Could not open isec.txt ({}): {source}", filename.display()))]
+    OpenIsec {
+        filename: PathBuf,
+        source: std::io::Error,
+    },
+    #[snafu(display("Could not read isec.txt ({}): {source}", filename.display()))]
+    ReadIsec {
+        filename: PathBuf,
+        source: std::io::Error,
+    },
+    #[snafu(display("Could not parse isec.txt ({}): {source}", filename.display()))]
+    ParseIsec {
+        filename: PathBuf,
+        #[snafu(source(from(IsecError, Box::new)))]
+        source: Box<IsecError>,
+    },
 
     #[snafu(display("Could not open .ese ({}): {source}", filename.display()))]
     OpenEse {

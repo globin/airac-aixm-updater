@@ -1,111 +1,15 @@
-use std::path::{Path, PathBuf};
-
 use aixm::{AixmAirportHeliport, AixmDesignatedPoint, AixmNdb, AixmVor, LocationType, Member};
-use chrono::Utc;
-use geo::{Distance as _, Geodesic, coord};
-use snafu::ResultExt as _;
-use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::mpsc};
+use geo::{Distance as _, Geodesic, point};
+use tokio::sync::mpsc;
 use tracing::error;
 use vatsim_parser::{
     adaptation::locations::{Fix, NDB, VOR},
-    ese::Ese,
     sct::{Airport, Sct},
 };
 
-use crate::{
-    Message,
-    error::{AiracUpdaterResult, CreateNewSnafu, RenameSnafu, WriteNewSnafu},
-};
+use crate::Message;
 
-pub(crate) enum EuroscopeFile {
-    Sct {
-        path: PathBuf,
-        content: Box<Sct>,
-    },
-    #[expect(dead_code, reason = ".ese not handled yet")]
-    Ese {
-        path: PathBuf,
-        content: Box<Ese>,
-    },
-}
-impl EuroscopeFile {
-    pub(crate) fn combine_with_aixm(self, aixm: &[Member], tx: mpsc::Sender<Message>) -> Self {
-        match self {
-            EuroscopeFile::Sct { path, content } => {
-                let content = Sct::update_from_aixm(*content, aixm, tx);
-                EuroscopeFile::Sct {
-                    path,
-                    content: Box::new(content),
-                }
-            }
-            EuroscopeFile::Ese {
-                path: _,
-                content: _,
-            } => self,
-        }
-    }
-
-    pub(crate) async fn write_file(self, tx: mpsc::Sender<Message>) -> AiracUpdaterResult {
-        if let Self::Sct { content: sct, .. } = &self {
-            if let Some(file_name) = self.path().file_name() {
-                let mut bkp_file_name = file_name.to_os_string();
-                bkp_file_name.push(format!(".aau_bkp{}", Utc::now().format("%Y%m%d_%H%M%S")));
-                let bkp_file_path = self.path().with_file_name(bkp_file_name);
-                tx.send(Message::info(format!(
-                    "Moving {} to {}",
-                    self.path().display(),
-                    bkp_file_path.display()
-                )))
-                .await?;
-
-                tokio::fs::rename(self.path(), &bkp_file_path)
-                    .await
-                    .context(RenameSnafu {
-                        from: self.path().to_path_buf(),
-                        to: bkp_file_path,
-                    })?;
-
-                tx.send(Message::info(format!(
-                    "Writing new {}",
-                    self.path().display(),
-                )))
-                .await?;
-
-                OpenOptions::new()
-                    .create_new(true)
-                    .write(true)
-                    .open(self.path())
-                    .await
-                    .context(CreateNewSnafu {
-                        path: self.path().to_path_buf(),
-                    })?
-                    .write_all(sct.to_string().as_bytes())
-                    .await
-                    .context(WriteNewSnafu {
-                        path: self.path().to_path_buf(),
-                    })?;
-
-                tx.send(Message::info(format!(
-                    "Finished writing {}",
-                    self.path().display(),
-                )))
-                .await?;
-            }
-        }
-        Ok(())
-    }
-
-    fn path(&self) -> &Path {
-        match self {
-            EuroscopeFile::Sct { path, content: _ } => path,
-            EuroscopeFile::Ese { path, content: _ } => path,
-        }
-    }
-}
-
-trait SctAixmUpdateExt {
-    fn update_from_aixm(self, aixm: &[Member], tx: mpsc::Sender<Message>) -> Self;
-}
+use super::AixmUpdateExt;
 
 fn update_airports(sct: &mut Sct, aixm_airport: &AixmAirportHeliport, tx: mpsc::Sender<Message>) {
     let (lat, lng) = aixm_airport
@@ -116,7 +20,7 @@ fn update_airports(sct: &mut Sct, aixm_airport: &AixmAirportHeliport, tx: mpsc::
         .gml_pos
         .split_once(' ')
         .unwrap();
-    let coordinate = coord! {
+    let coordinate = point! {
         x: lng.parse().unwrap(),
         y: lat.parse().unwrap(),
     };
@@ -125,7 +29,6 @@ fn update_airports(sct: &mut Sct, aixm_airport: &AixmAirportHeliport, tx: mpsc::
             .aixm_time_slice
             .aixm_airport_heliport_time_slice
             .aixm_location_indicator_icao
-            .text
             .as_ref()
             .is_some_and(|designator| *designator == ad.designator)
     }) {
@@ -134,7 +37,6 @@ fn update_airports(sct: &mut Sct, aixm_airport: &AixmAirportHeliport, tx: mpsc::
         .aixm_time_slice
         .aixm_airport_heliport_time_slice
         .aixm_location_indicator_icao
-        .text
     {
         if let Err(e) =
             tx.blocking_send(Message::debug(format!("Adding new airport: {designator}")))
@@ -161,7 +63,7 @@ fn update_vors(sct: &mut Sct, aixm_vor: &AixmVor, tx: mpsc::Sender<Message>) {
     })
     .split_once(' ')
     .unwrap();
-    let coordinate = coord! {
+    let coordinate = point! {
         x: lng.parse().unwrap(),
         y: lat.parse().unwrap(),
     };
@@ -221,7 +123,7 @@ fn update_ndbs(sct: &mut Sct, aixm_ndb: &AixmNdb, tx: mpsc::Sender<Message>) {
     })
     .split_once(' ')
     .unwrap();
-    let coordinate = coord! {
+    let coordinate = point! {
         x: lng.parse().unwrap(),
         y: lat.parse().unwrap(),
     };
@@ -280,7 +182,7 @@ fn update_fixes(sct: &mut Sct, aixm_fix: &AixmDesignatedPoint, tx: mpsc::Sender<
     })
     .split_once(' ')
     .unwrap();
-    let coordinate = coord! {
+    let coordinate = point! {
         x: lng.parse().unwrap(),
         y: lat.parse().unwrap(),
     };
@@ -290,7 +192,7 @@ fn update_fixes(sct: &mut Sct, aixm_fix: &AixmDesignatedPoint, tx: mpsc::Sender<
             .aixm_designated_point_time_slice
             .aixm_designator
             == fix.designator
-            && Geodesic::distance(coordinate.into(), fix.coordinate.into()) < 1000.0
+            && Geodesic.distance(coordinate, fix.coordinate) < 1000.0
     }) {
         fix.coordinate = coordinate;
     } else if aixm_fix
@@ -327,7 +229,7 @@ fn update_fixes(sct: &mut Sct, aixm_fix: &AixmDesignatedPoint, tx: mpsc::Sender<
     }
 }
 
-impl SctAixmUpdateExt for Sct {
+impl AixmUpdateExt for Sct {
     fn update_from_aixm(mut self, aixm: &[Member], tx: mpsc::Sender<Message>) -> Self {
         for data in aixm {
             match data {
@@ -344,7 +246,7 @@ impl SctAixmUpdateExt for Sct {
                     update_fixes(&mut self, aixm_fix, tx.clone());
                 }
                 _ => (),
-            };
+            }
         }
 
         self

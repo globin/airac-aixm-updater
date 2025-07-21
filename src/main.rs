@@ -95,7 +95,7 @@ impl App {
                 Level::INFO => info!("{}", msg.content),
                 Level::WARN => warn!("{}", msg.content),
                 Level::ERROR => error!("{}", msg.content),
-            };
+            }
             self.log_buffer.push(msg);
         }
     }
@@ -110,24 +110,24 @@ impl eframe::App for App {
 
             ui.add_space(10.);
 
-            if ui.button("Choose AIRAC folder…").clicked() {
-                if let Some(path) = FileDialog::new().pick_folder() {
+            if ui.button("Choose EuroScope .prf file…").clicked() {
+                if let Some(path) = FileDialog::new().pick_file() {
                     self.log_buffer = vec![];
-                    info!("AIRAC path chosen: {}", path.display());
+                    info!(".prf chosen: {}", path.display());
                     self.picked_path = Some(path);
                 }
             }
 
             if let Some(picked_path) = &self.picked_path {
                 ui.horizontal(|ui| {
-                    ui.label("AIRAC folder:");
+                    ui.label("EuroScope .prf:");
                     ui.monospace(picked_path.display().to_string());
                 });
             }
 
             ui.add_space(10.);
 
-            ui.label("This tool will augment all .sct and .ese files, contained in the folder chosen above, with AIRAC data from DFS AIXM files.");
+            ui.label("This tool will augment the .sct, airways.txt and isec.txt, referenced in the .prf chosen above, with AIRAC data from DFS AIXM files.");
             ui.hyperlink("https://aip.dfs.de/datasets/");
             ui.label("The original files will remain as backup, suffixed with the time stamp of execution.");
 
@@ -135,9 +135,9 @@ impl eframe::App for App {
 
             if ui.add_enabled(self.picked_path.is_some(), Button::new("Start Processing…")).clicked() {
                 if let Some(p) = &self.picked_path {
-                    let path = PathBuf::from(p);
+                    let prf_path = PathBuf::from(p);
                     self.log_buffer = vec![];
-                    self.rt.spawn(spawn_jobs(path, self.tx.clone()));
+                    self.rt.spawn(spawn_jobs(prf_path, self.tx.clone()));
                 } else {
                     error!("Path not found");
                 }
@@ -174,9 +174,9 @@ impl eframe::App for App {
     }
 }
 
-async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) {
+async fn spawn_jobs(prf: impl AsRef<Path>, tx: mpsc::Sender<Message>) {
     let (es_files, aixm) = match try_join!(
-        load_euroscope_files(dir.as_ref(), tx.clone()),
+        load_euroscope_files(prf.as_ref(), tx.clone()),
         load_aixm_files(tx.clone())
     ) {
         Ok(ok) => ok,
@@ -208,4 +208,6 @@ async fn spawn_jobs(dir: impl AsRef<Path>, tx: mpsc::Sender<Message>) {
         }
         Err(e) => error!("{e}"),
     }
+
+    info!("Finished processing, you can close the window.");
 }
