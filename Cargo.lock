@@ -171,7 +171,7 @@ dependencies = [
 [[package]]
 name = "aixm"
 version = "0.1.0"
-source = "git+https://github.com/blip-radar/aixm-rs#27379cdded4443628337fcc1ed9f018f2e2182a6"
+source = "git+https://github.com/blip-radar/aixm-rs#4d0863a337166ebbf6ca28a9e135941d6a7c4154"
 dependencies = [
  "quick-xml 0.38.0",
  "serde",
