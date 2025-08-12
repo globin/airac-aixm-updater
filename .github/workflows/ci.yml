@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Cache
         uses: actions/cache@v4
         with:
@@ -51,7 +51,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Cache
         uses: actions/cache@v4
         with:
@@ -81,7 +81,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install Nix
         uses: cachix/install-nix-action@3715ab1a11cac9e991980d7b4a28d80c7ebdd8f9 # v27
         with:
