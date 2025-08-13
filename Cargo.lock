@@ -607,7 +607,7 @@ dependencies = [
  "serde",
  "smallvec",
  "smol_str",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "uuid",
  "variadics_please",
  "wgpu-types 24.0.0",
@@ -1430,9 +1430,9 @@ dependencies = [
 
 [[package]]
 name = "from-pest"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0f2dbe0e5bcfc1f8a135e14cbca3dd14e0c5696f34c2a1c7c9d729c01e9ae88"
+checksum = "8f6608105256838dc3a7586083a8e4485ca6533bf1a39c3ed327e9de16a39e7f"
 dependencies = [
  "log",
  "pest",
@@ -2388,7 +2388,7 @@ dependencies = [
  "once_cell",
  "rustc-hash 1.1.0",
  "strum",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "unicode-ident",
 ]
 
@@ -2898,15 +2898,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1db05f56d34358a8b1066f67cbb203ee3e7ed2ba674a6263a1d5ec6db2204323"
 dependencies = [
  "memchr",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "ucd-trie",
 ]
 
 [[package]]
 name = "pest-ast"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca1f0a53a45cfbdcd93e8982d9ead828a022762b1d890f1571f2a72e64277381"
+checksum = "ee0348ed5e4fdd30965042a0fcafe9702f7ef5e71f3f1e12404e8ed3b0ebfb3b"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
@@ -3173,7 +3173,7 @@ dependencies = [
  "rustc-hash 2.1.1",
  "rustls",
  "socket2 0.5.10",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tokio",
  "tracing",
  "web-time",
@@ -3194,7 +3194,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "slab",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tinyvec",
  "tracing",
  "web-time",
@@ -3912,11 +3912,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.12"
+version = "2.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
+checksum = "0b0949c3a6c842cbde3f1686d6eea5a010516deb7085f79db747562d4102f41e"
 dependencies = [
- "thiserror-impl 2.0.12",
+ "thiserror-impl 2.0.14",
 ]
 
 [[package]]
@@ -3932,9 +3932,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.12"
+version = "2.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
+checksum = "cc5b44b4ab9c2fdd0e0512e6bece8388e214c0749f5862b114cc5b7a25daf227"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4319,7 +4319,7 @@ dependencies = [
 [[package]]
 name = "vatsim-parser"
 version = "0.1.0"
-source = "git+https://github.com/blip-radar/vatsim-parser#7ba4027d64731c97513de00e763ffe84c90c2deb"
+source = "git+https://github.com/blip-radar/vatsim-parser#a11524e25cd2e9eb9e66dc0d1481dc04f581f771"
 dependencies = [
  "bevy_derive",
  "bevy_reflect",
@@ -4338,7 +4338,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
  "uom",
 ]
@@ -4669,7 +4669,7 @@ dependencies = [
  "raw-window-handle",
  "rustc-hash 1.1.0",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "wgpu-core-deps-windows-linux-android",
  "wgpu-hal",
  "wgpu-types 25.0.0",
@@ -4699,7 +4699,7 @@ dependencies = [
  "portable-atomic",
  "raw-window-handle",
  "renderdoc-sys",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "wgpu-types 25.0.0",
 ]
 
@@ -4726,7 +4726,7 @@ dependencies = [
  "bytemuck",
  "js-sys",
  "log",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "web-sys",
 ]
 
